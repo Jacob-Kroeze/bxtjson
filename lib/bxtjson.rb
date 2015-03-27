@@ -1,6 +1,4 @@
-# input stream style (new-line separated) json objects from 
-# naive BASIC script in FSMS. FSMS is a multi-value store
-# on the IBM u2 platform
+# input stream style (new-line separated) json objects
 # main method map_onto_skeleton_of_schema
 # JSON -> JSON
 require 'multi_json'
@@ -9,7 +7,7 @@ module Bxtjson
   ## dependencies
   ## gem: json_schema
   ## gem: multi_json
-  ## gem: oj  || other json library
+  ## JSON standard library or other (e.g. oj) json parsers
   ## You implement a model in Sequel or ActiveRecord if you want.
   ############################################################
   # Constants                                               #
@@ -34,7 +32,6 @@ module Bxtjson
                     entity: nil)
     schema = JsonSchema.parse!(schema_data)
     schema.expand_references!
-    p "****"
     if entity.nil?
       entity_schema = schema
     else 
@@ -71,10 +68,12 @@ module Bxtjson
                                        schema_filename:,
                                        clean_proc: ->(str){str},
                                        model: nil,
+                                       schema_entity: nil,
                                        authorizing_pointer:)
-    skeleton = Bxtjson.skeleton(schema_data: MultiJson.load(File.read(schema_filename)))
+    skeleton = Bxtjson.skeleton(schema_data: MultiJson.load(File.read(schema_filename)),
+                                entity: schema_entity)
     if model
-      model = model.to_s.capitalize.constantize
+      model = constantize(model.to_s.capitalize)
 
       text_to_lazy_json(filename: json_filename, clean_proc: clean_proc )
         .map {|data| 
@@ -138,6 +137,7 @@ module Bxtjson
   # insert. Expand the arrays into objects
   # (e.g. key: [1,2,3] -> [{key: 1}, {key: 2}, {key: 3})
   # (Array, Hash) -> {[]}
+
   def self.expand_array_to_objects(array:, source_hash: )
     matrix = array.first.map do |key, _|
       # if a plain string put into array. Flatten all others.
@@ -168,29 +168,35 @@ module Bxtjson
   # and insert value. Depends on flat source hash
   # (Hash, Hash) -> Hash
   # a bit lost here
-  def self.fillin(source_hash:, skeleton:, acc: {})
+  def self.fillin(source_hash:, skeleton:, acc: {}, parent_key: nil)
     case
     when skeleton.kind_of?( Hash )
       acc = Hash[skeleton.map do |key, value|
                    # recurse on skeleton levels
-                   [key,( lookup(key, source_hash) or fillin(source_hash: source_hash, skeleton: value) ) ]
+                   [key,( lookup(key, source_hash) or fillin(source_hash: source_hash,
+                                                             skeleton: value, 
+                                                             parent_key: key) ) ]
                  end
                 ]
+    when (skeleton.kind_of?( Array) and skeleton.first.empty?)
+
+        byebug
+      acc = lookup(key, source_hash)
     when skeleton.kind_of?( Array )
+
       # when an array, multi-value database IBM U2 provide keys with
       # an array (eg Key: [1,2,3]) but we want obj: [{key:1}, {key: 2}]
-      #        acc = skeleton.map do |item|
       acc = expand_array_to_objects( array: skeleton,
                                      source_hash: source_hash)
+
     when skeleton.nil?
-      byebug
-      acc
+      acc = ['skeleton-nil']
     else
       acc = nil
     end
     return acc
   end
-  # loop through hash, cleaning keys, and mapping to new schema
+  # loop through hash, cleaning keys
   # Hash -> Hash
   def self._map_onto_skeleton_of_schema(json_data,
                                         acc: {},
@@ -227,6 +233,14 @@ module Bxtjson
       acc = data
     end
     acc
+  end
+# File activesupport/lib/active_support/inflector.rb, line 278
+  def self.constantize(camel_cased_word)
+    unless /\A(?:::)?([A-Z]\w*(?:::[A-Z]\w*)*)\z/ =~ camel_cased_word
+      raise NameError, "#{camel_cased_word.inspect} is not a valid constant name!"
+    end
+
+    Object.module_eval("::#{$1}", __FILE__, __LINE__)
   end
 end
 
