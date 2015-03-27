@@ -179,9 +179,7 @@ module Bxtjson
                  end
                 ]
     when (skeleton.kind_of?( Array) and skeleton.first.empty?)
-
-        byebug
-      acc = lookup(key, source_hash)
+     acc = lookup(parent_key, source_hash)
     when skeleton.kind_of?( Array )
 
       # when an array, multi-value database IBM U2 provide keys with
