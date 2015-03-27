@@ -177,10 +177,13 @@ module Bxtjson
                    path.push key # save hash depth to stack-like []
                    # recurse on skeleton levels
                    [
-                    [ path.last, (lookup(key, source_hash, path)  or
+                    [ path.last, (fillin(source_hash: source_hash,
+                                         skeleton: nil,
+                                         acc: lookup(key, source_hash, path),
+                                         path: path) or
                                   fillin(source_hash: source_hash,
-                                                                         skeleton: value,
-                                                                         path: path))
+                                         skeleton: value,
+                                         path: path))
                     ],
                     path.pop # pop the path at end of recursion,
                     #      and drop from returned array
@@ -194,8 +197,14 @@ module Bxtjson
       # when an array (eg Key: [1,2,3]) but we want obj: [{key:1}, {key: 2}]
       acc = expand_array_to_objects( array: skeleton,
                                      source_hash: source_hash)
-    when skeleton.nil?
-      acc = nil
+    when skeleton.nil? # the acc value should be a string, so join if possible
+      if acc.respond_to?(:join)
+        acc = acc.join
+      elsif acc.respond_to?(:empty?)
+        acc = acc.empty? ? nil : acc
+      else
+        acc = acc
+      end
     else
       acc = nil
     end
