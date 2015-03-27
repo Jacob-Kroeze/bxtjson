@@ -1,33 +1,30 @@
 # input stream style (new-line separated) json objects
 # main method map_onto_skeleton_of_schema
 # JSON -> JSON
+
 require 'multi_json'
 require 'json_schema'
+  # == dependencies
+  # * gem: json_schema
+  # * gem: multi_json
+  # * JSON standard library or other (e.g. oj) json parsers
+  # * You implement a model in Sequel or ActiveRecord if you want.
+  # == Constants (examples)
+  #   cleaner_proc = ->(str) {str.gsub(/\W+/, " ").lstrip
+  #       .gsub(" ", "_")
+  #       .gsub(/PPPO_|PPCO_/, "")
+  #       .downcase
+  #   }
+  #   json_filename = "../../../fsms-tmp/PP_PROPOSAL_2015.JSON"
+  #   schema_filename = "./docs/schema.json"
+  #   authorizinng_pointer '#/departments/primary_dept'
+
 module Bxtjson
-  ## dependencies
-  ## gem: json_schema
-  ## gem: multi_json
-  ## JSON standard library or other (e.g. oj) json parsers
-  ## You implement a model in Sequel or ActiveRecord if you want.
-  ############################################################
-  # Constants                                               #
-  # KEY_CLEANER = ->(str) {str.gsub(/\W+/, " ").lstrip        #
-  #     .gsub(" ", "_")                                       #
-  #     .gsub(/PPPO_|PPCO_/, "")                              #
-  #     .downcase                                             #
-  # }                                                 #
-  # JSON_FILENAME = "../../../fsms-tmp/PP_PROPOSAL_2015.JSON" #
-  # SCHEMA_FILENAME = "./docs/schema.json"                    #
-  # SKELETON_DATA = -> (){ skeleton()}
-  # AUTHORIZING_POINTER '#/departments/primary_dept'
-  ######################################                    #
-  ############################################################
-  # initialize an empty hashmap given a json schema
-  # Arguments:
-  # * schema_data: Hash from parse json-schema
-  # * entity: String,  section of schema to initialize. 
-  #   * if nil, use full schema
-  # Hash -> Hash
+  # Initialize an empty hashmap given a json-schema[http://json-schema.org]
+  #
+  # @param [Hash] schema_data the data from json-schema
+  # @param [String, nil] entity the resource name to enfocus
+  # @return [Hash] the an empty "initialized" json-schema
   def self.skeleton(schema_data:,
                     entity: nil)
     schema = JsonSchema.parse!(schema_data)
@@ -40,7 +37,10 @@ module Bxtjson
     return _skeleton(entity_schema, acc: {})
   end
   # process a file of jsonl (linefeed) and clean keys with proc
-  # File -> [{}]
+  #
+  # @param [String] json_filename source of json objects in jsonl[https://github.com/stephenplusplus/jsonl] format
+  # @param [Proc] a function to clean up keys
+  # @return [Hash] hash of arrays `[{  }]`
   def self.text_to_lazy_json(json_filename:,
                              clean_proc:)
     File.foreach(json_filename)
@@ -49,27 +49,35 @@ module Bxtjson
       _key_cleaner(data: MultiJson.load(line))
     end
   end
-  # given JsonSchema and a filename, parse file and map contents
-  # onto schema.
+  # Parse json-schema file and map contents of json file into
+  # initialized schema
+  #
   # Mapping of contents will search for the first key in the source,
-  # that matched the schema (recursively). So, the source should be
+  # that match the schema (recursively). So, the source should be
   # flat for clarity, and the schema can be nested.
-  # This method also validates using JsonSchema
+  #
+  # If it cannot find a key, it will look for "top/next/final" path
+  # key in the source data.
+  # 
+  # For example, in the skeleton
+  #  {key: {nest: "this"} }
+  # Will be filled with "muscle" if the source has a ket
+  #  {"key/nest": "data muscle"}
+  #
   # TODO: design interface from csv to json that fits these
   # principles.
-  # Paramaters:
-  # * json_filename: JSON_FILENAME
-  # * schema_filename: SCHEMA_FILENAME
-  # * clean_proc: KEY_CLEANER
-  # * model: 'String' that responds to create
-  # * authorizing_pointer: '#departments/primary_dept'
-  # File -> Hash[uuid, Boolean]
-  def self.map_onto_skeleton_of_schema(json_filename:,
-                                       schema_filename:,
-                                       clean_proc: ->(str){str},
-                                       model: nil,
-                                       schema_entity: nil,
-                                       authorizing_pointer:)
+  # 
+  # @param [String] json_filename filename for jsonl source
+  # @param [String] schema_filename filename for json-schema
+  # @param [Proc] clean_proc a function to clean up keys
+  # @param [String, #create] model the name of a model to call :create on
+  # @param [String] authorizing_pointer json-pointer[https://tools.ietf.org/html/rfc6901] that fills in the key "authorized_by"
+  def self.muscle(json_filename:,
+                  schema_filename:,
+                  clean_proc: ->(str){str},
+                  model: nil,
+                  schema_entity: nil,
+                  authorizing_pointer:)
     skeleton = Bxtjson.skeleton(schema_data: MultiJson.load(File.read(schema_filename)),
                                 entity: schema_entity)
     if model
@@ -96,7 +104,8 @@ module Bxtjson
   # Recursively remove falsey values from hash
   # Falsey values are those that return true from respond_to(:empty?)
   # or :nil?
-  # Hash -> Hash
+  # @param [Hash] hash
+  # @return [Hash]
   def self.compact_hash(hash)
     p = proc do |_, v|
       v.delete_if(&p) if v.respond_to? :delete_if
