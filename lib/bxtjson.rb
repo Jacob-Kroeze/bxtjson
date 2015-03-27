@@ -128,16 +128,16 @@ module Bxtjson
     return acc
   end
   # given a key, return value of lookup recursively
+  # if that lookup fails, try by path
   # (String, Hash) -> Hash
-  def self.lookup(key, source_hash)
-    source_hash[key]
+  def self.lookup(key, source_hash, path=[])
+    source_hash.fetch(key, nil) || source_hash.fetch(path.join("/"), nil)
   end
 
   # Take an array of hashes with a hash that contains values to
   # insert. Expand the arrays into objects
   # (e.g. key: [1,2,3] -> [{key: 1}, {key: 2}, {key: 3})
   # (Array, Hash) -> {[]}
-
   def self.expand_array_to_objects(array:, source_hash: )
     matrix = array.first.map do |key, _|
       # if a plain string put into array. Flatten all others.
@@ -166,27 +166,36 @@ module Bxtjson
 
   # given a source_hash, find the first key from a skeleton hash
   # and insert value. Depends on flat source hash
+  # remember the path during lookup with skeleton
   # (Hash, Hash) -> Hash
   # a bit lost here
-  def self.fillin(source_hash:, skeleton:, acc: {}, parent_key: nil)
+  def self.fillin(source_hash:, skeleton:, acc: {}, path: [])
+byebug
+
     case
     when skeleton.kind_of?( Hash )
+      
       acc = Hash[skeleton.map do |key, value|
+                   path.push key # save location
                    # recurse on skeleton levels
-                   [key,( lookup(key, source_hash) or fillin(source_hash: source_hash,
-                                                             skeleton: value, 
-                                                             parent_key: key) ) ]
+                   [
+                    [path.last,( lookup(key, source_hash, path ) or fillin(source_hash: source_hash,
+                                                              skeleton: value,
+                                                              path: path)) 
+                   ],
+                   path.pop # pop the path at end of recursion,
+                   #      and drop from returned array
+                   ][0]
                  end
                 ]
-    when (skeleton.kind_of?( Array) and skeleton.first.empty?)
-     acc = lookup(parent_key, source_hash)
-    when skeleton.kind_of?( Array )
 
+    when (skeleton.kind_of?( Array) and skeleton.first.empty?)
+      acc = lookup(path.last, source_hash)
+   when skeleton.kind_of?( Array )
       # when an array, multi-value database IBM U2 provide keys with
       # an array (eg Key: [1,2,3]) but we want obj: [{key:1}, {key: 2}]
       acc = expand_array_to_objects( array: skeleton,
                                      source_hash: source_hash)
-
     when skeleton.nil?
       acc = ['skeleton-nil']
     else
