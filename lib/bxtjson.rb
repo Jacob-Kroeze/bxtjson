@@ -170,7 +170,7 @@ module Bxtjson
   # (Hash, Hash) -> Hash
   # a bit lost here
   def self.fillin(source_hash:, skeleton:, acc: {}, path: [])
-byebug
+#byebug
 
     case
     when skeleton.kind_of?( Hash )
@@ -178,6 +178,7 @@ byebug
       acc = Hash[skeleton.map do |key, value|
                    path.push key # save location
                    # recurse on skeleton levels
+                   p path
                    [
                     [path.last,( lookup(key, source_hash, path ) or fillin(source_hash: source_hash,
                                                               skeleton: value,
@@ -196,8 +197,6 @@ byebug
       # an array (eg Key: [1,2,3]) but we want obj: [{key:1}, {key: 2}]
       acc = expand_array_to_objects( array: skeleton,
                                      source_hash: source_hash)
-    when skeleton.nil?
-      acc = ['skeleton-nil']
     else
       acc = nil
     end
