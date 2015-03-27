@@ -171,32 +171,31 @@ module Bxtjson
   # a bit lost here
   def self.fillin(source_hash:, skeleton:, acc: {}, path: [])
 #byebug
-
     case
     when skeleton.kind_of?( Hash )
-      
       acc = Hash[skeleton.map do |key, value|
-                   path.push key # save location
+                   path.push key # save hash depth to stack-like []
                    # recurse on skeleton levels
-                   p path
                    [
-                    [path.last,( lookup(key, source_hash, path ) or fillin(source_hash: source_hash,
-                                                              skeleton: value,
-                                                              path: path)) 
-                   ],
-                   path.pop # pop the path at end of recursion,
-                   #      and drop from returned array
+                    [ path.last, (lookup(key, source_hash, path)  or
+                                  fillin(source_hash: source_hash,
+                                                                         skeleton: value,
+                                                                         path: path))
+                    ],
+                    path.pop # pop the path at end of recursion,
+                    #      and drop from returned array
                    ][0]
                  end
                 ]
-
     when (skeleton.kind_of?( Array) and skeleton.first.empty?)
+      # when an array with no inner objects/hashmaps
       acc = lookup(path.last, source_hash)
-   when skeleton.kind_of?( Array )
-      # when an array, multi-value database IBM U2 provide keys with
-      # an array (eg Key: [1,2,3]) but we want obj: [{key:1}, {key: 2}]
+    when skeleton.kind_of?( Array )
+      # when an array (eg Key: [1,2,3]) but we want obj: [{key:1}, {key: 2}]
       acc = expand_array_to_objects( array: skeleton,
                                      source_hash: source_hash)
+    when skeleton.nil?
+      acc = nil
     else
       acc = nil
     end
