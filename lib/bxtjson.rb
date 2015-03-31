@@ -107,7 +107,7 @@ module Bxtjson
   # or :nil?
   # @param [Hash] hash
   # @return [Hash]
-  def self.compact_hash(hash)
+  def self.compact_hash!(hash)
     p = proc do |_, v|
       v.delete_if(&p) if v.respond_to? :delete_if
       v.respond_to?(:empty?) && v.empty? || v.nil?
