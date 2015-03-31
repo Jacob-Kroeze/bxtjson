@@ -77,19 +77,20 @@ module Bxtjson
                   clean_proc: ->(str){str},
                   model: nil,
                   schema_entity: nil,
-                  authorizing_pointer:)
+                  authorizing_pointer:,
+                  data_attr: :data)     
     skeleton = Bxtjson.skeleton(schema_data: MultiJson.load(File.read(schema_filename)),
                                 entity: schema_entity)
     if model
       model = constantize(model.to_s.capitalize)
 
-      text_to_lazy_json(filename: json_filename, clean_proc: clean_proc )
+      text_to_lazy_json(json_filename: json_filename, clean_proc: clean_proc )
         .map {|data| 
         data = fillin(source_hash: _map_onto_skeleton_of_schema( data, 
                                                                  clean_proc: clean_proc,
                                                                  skeleton: skeleton ),
                       skeleton: skeleton) 
-        result = model.create(data: data)
+        result = model.create( data_attr => data)
       }
     else
       out = []
@@ -117,8 +118,8 @@ module Bxtjson
   # Creates a skeleton for object and array from a Json Schema
   # Boolean, String, Number, Integer, Null are given a nil value to start.
   # Hash -> Hash
-  def self._skeleton(json_schema, acc={})
-    case json_schema.type
+  def self._skeleton(json_schema, acc={})  
+  case json_schema.type
     when ["object"]
       acc = Hash[json_schema.properties.map do |key, value|
                    [key,  _skeleton(value, acc)]
