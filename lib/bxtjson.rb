@@ -46,7 +46,7 @@ module Bxtjson
     File.foreach(json_filename)
       .lazy
       .map do |line|
-      _key_cleaner(data: MultiJson.load(line))
+      _key_cleaner(data: MultiJson.load(line), clean_proc: clean_proc)
     end
   end
   # Parse json-schema file and map contents of json file into
@@ -87,7 +87,6 @@ module Bxtjson
       text_to_lazy_json(json_filename: json_filename, clean_proc: clean_proc )
         .map {|data| 
         data = fillin(source_hash: _map_onto_skeleton_of_schema( data, 
-                                                                 clean_proc: clean_proc,
                                                                  skeleton: skeleton ),
                       skeleton: skeleton) 
         result = model.create( data_attr => data)
@@ -96,7 +95,6 @@ module Bxtjson
       out = []
       text_to_lazy_json(json_filename: json_filename, clean_proc: clean_proc )
         .map {|data| out << fillin(source_hash: _map_onto_skeleton_of_schema( data, 
-                                                                              clean_proc: clean_proc,
                                                                               skeleton: skeleton ),
                                    skeleton: skeleton)
       }
@@ -113,6 +111,20 @@ module Bxtjson
       v.respond_to?(:empty?) && v.empty? || v.nil?
     end
     hash.delete_if(&p)
+  end
+  def self.compact_values!(hash)
+    Hash[hash.map do |key, value|
+           [key,
+            if value.is_a?(Array)
+              value.map {|item| Bxtjson.compact_hash!(item) }
+            elsif value.respond_to?( :delete_if)
+              Bxtjson.compact_hash!(value)
+            else
+              value
+            end
+           ]
+         end
+        ]
   end
   private
   # Creates a skeleton for object and array from a Json Schema
@@ -141,6 +153,7 @@ module Bxtjson
   # if that lookup fails, try by path
   # (String, Hash) -> Hash
   def self.lookup(key, source_hash, path=[])
+    byebug
     source_hash.fetch(key, nil) || source_hash.fetch(path.join("/"), nil)
   end
 
@@ -180,7 +193,6 @@ module Bxtjson
   # (Hash, Hash) -> Hash
   # a bit lost here
   def self.fillin(source_hash:, skeleton:, acc: {}, path: [])
-#byebug
     case
     when skeleton.kind_of?( Hash )
       acc = Hash[skeleton.map do |key, value|
@@ -221,26 +233,27 @@ module Bxtjson
     return acc
   end
   # loop through hash, cleaning keys
+  # of note: if a "key/key" pointer where key == key then only the 
+  # value of the nested key will be returned. Use a naming convention
+  # of "keys/key" or "unique/uniqueNest"
   # Hash -> Hash
   def self._map_onto_skeleton_of_schema(json_data,
                                         acc: {},
-                                        clean_proc:,
                                         skeleton:)
 
     case 
     when json_data.kind_of?(Hash)
       acc = Hash[json_data.map do |key, value|
-                   [clean_proc.call(key),
+                   [key,
                     _map_onto_skeleton_of_schema(value,
                                                  acc: acc,
-                                                 clean_proc: clean_proc,
                                                  skeleton: skeleton)
                    ]
                  end
                 ]
     when json_data.kind_of?(Array)
       acc =  json_data.map do |item|
-        _map_onto_skeleton_of_schema(item, clean_proc: clean_proc, skeleton: skeleton)
+        _map_onto_skeleton_of_schema(item, skeleton: skeleton)
       end
     else
       acc = json_data
