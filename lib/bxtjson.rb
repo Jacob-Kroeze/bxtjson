@@ -153,7 +153,6 @@ module Bxtjson
   # if that lookup fails, try by path
   # (String, Hash) -> Hash
   def self.lookup(key, source_hash, path=[])
-    byebug
     source_hash.fetch(key, nil) || source_hash.fetch(path.join("/"), nil)
   end
 
