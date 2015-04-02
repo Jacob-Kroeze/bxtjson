@@ -172,11 +172,14 @@ module Bxtjson
 
       }
     end
-    # pad the array if current array length is not eq max length of arrays
+    # pad the array if current array length is not eq max length of
+    # arrays. Pad is the first element. This is how some reports treat
+    # repeating values (a la sql reporting)
     sorted = matrix.sort_by(&:length)
     max = sorted.last.length
-    sorted.map {|item|
-      item.fill( [sorted.first.first[0], nil], (item.length)..(max - 1) )
+    sorted.map {|item| # padding done here. Second element in array,
+      # below, could be nil. Todo: paramaterize that as option
+      item.fill( [sorted.first.first[0], sorted.first.first[1] ], (item.length)..(max - 1) )
     }
     sorted
 
