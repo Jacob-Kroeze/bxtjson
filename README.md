@@ -5,7 +5,7 @@ Map json from source to fit schema structure
 
 Sometimes, you have a B.erry X.tra special T.-rex json-schema(.org), but she doesn't even have a skeleton.
 
-    Bxtjson.skeleton(JsonSchemaHashMap)
+    Bxtjson.skeleton(schema_data: trex_schema_hash)
     #=> {
           your: nil,
           skeleton: [],
@@ -18,7 +18,7 @@ Sometimes, you have a B.erry X.tra special T.-rex json-schema(.org), but she doe
 Othertimes your T-rex json-schema is lost in a Pre-historic ForestSchema. For more details on that forest, 
 _Read up on the very useful [json_schema](https://github.com/brandur/json_schema) library._
 
-    Bxtjson.skeleton(ForestSchema, entity: 't-rex')
+    Bxtjson.skeleton(schema_data: forest_schema_hash, entity: 't-rex')
     #> {the: nil, skeleton: [], 'just-for-trex' => nil}
     
 Then, bring him to life with
