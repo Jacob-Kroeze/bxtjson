@@ -1,0 +1,19 @@
+#!/usr/bin/env ruby
+
+require 'bxtjson'
+require 'multi_json'
+schema_filename = ARGV[0]
+if ARGV[1]
+  entity = ARGV[1]
+else
+  entity = nil
+end
+skeleton = Bxtjson.skeleton(schema_data: JSON.parse(File.read schema_filename),
+                            entity: entity)
+ARGF.each do |line|
+  Bxtjson.fillin(source_hash:
+                   Bxtjson._map_onto_skeleton_of_schema( MultiJson.load line,
+                                                                        skeleton: skeleton
+                                                       ),
+                 skeleton: skeleton)
+end
