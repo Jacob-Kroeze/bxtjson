@@ -1,19 +1,74 @@
 #!/usr/bin/env ruby
 
-require 'bxtjson'
-require 'multi_json'
-schema_filename = ARGV[0]
-if ARGV[1]
-  entity = ARGV[1]
-else
-  entity = nil
+require "optparse"
+require_relative "../lib/bxtjson"
+require "json"
+
+# culted from cargo json_schema
+options = {}
+
+option_parser = OptionParser.new do |opt|
+  opt.banner = "Usage: bxtjson [OPTIONS] DATA"
+  opt.separator ""
+  opt.separator "Options"
+  opt.on("-s", "--schema SCHEMA", "JSON schema filename") do |schema_filename|
+    options[:schema] = schema_filename
+  end
+  opt.on("-d", "--data DATA", "JSONL (linefeed) filename") do |data_filename|
+    options[:data] = data_filename
+  end
+  opt.on("-e", "--entity ENTITY", "JSON Schema entity (top level properties)") do |entity|
+    options[:entity] = entity
+  end
+  opt.on("-pp", "--pretty BOOLEAN", "Pretty print json output as array. -pp defaults to true") do |pretty|
+    options[:pretty] = pretty ||= true
+  end
+  opt.on("-aa", "--array BOOLEAN", "FIXME not implemented. Make output a json array format, prepend [ add "," and append ]") do |array|
+    options[:array] = array ||=true
+  end
+  opt.on("-cc", "--compact BOOLEAN", "Remove keys and values, except top level keys, of all falsey/empty values") do |compact|
+    options[:compact] = compact ||= true
+  end
+  opt.on("-h", "--help", "help") do
+    puts option_parser
+  end
 end
-skeleton = Bxtjson.skeleton(schema_data: JSON.parse(File.read schema_filename),
-                            entity: entity)
-ARGF.each do |line|
-  Bxtjson.fillin(source_hash:
-                   Bxtjson._map_onto_skeleton_of_schema( MultiJson.load line,
-                                                                        skeleton: skeleton
-                                                       ),
-                 skeleton: skeleton)
+
+option_parser.parse!
+skeleton = Bxtjson.skeleton(schema_data: JSON.parse(File.read options[:schema]),
+                            entity: options[:entity])
+def self.compact_values!(hash)
+  Hash[ Bxtjson.compact_values!(hash).map do |key, value|
+          [key, 
+#           (value.is_a?(Array) and value.try(:first).try(:empty?)) ? [] : value
+           (value.is_a?(Array) && value && value.any? && value.first.empty?) ? [] :value
+          ]
+        end
+      ]
 end
+def clean_proc
+  clean_proc = ->(str) {str      .gsub(/\W+|[0-9]+/, " ")      .strip      .gsub(" ", "_")      .gsub(/PPPO_|PPCO_/, "")      .downcase      .gsub(/merit_rating/, "merit_rating/merit_rating")      .gsub("_vf", "")  }
+end
+
+ARGF.each_line do |line|
+  result = Bxtjson.muscle_one(line, skeleton, clean_proc: clean_proc)
+  if options[:compact]
+    compact_values!(result)
+  end
+#     Bxtjson.fillin( source_hash: Bxtjson._map_onto_skeleton_of_schema(
+#                                                               Bxtjson._key_cleaner(data: MultiJson.load(line), 
+#                                                                                    clean_proc: clean_proc)#,
+# #p                                                              skeleton: skeleton
+#                                                               ),
+#             skeleton: skeleton)
+  if options[:pretty]
+    STDOUT.write("[") if ARGF.file.lineno == 1
+    STDOUT.write(MultiJson.dump result, pretty: true)
+    STDOUT.write(",") unless ARGF.eof 
+    STDOUT.write("]") if ARGF.eof
+  else
+    STDOUT.puts(MultiJson.dump result)
+  end
+end
+
+

@@ -1,0 +1,2 @@
+ERROR:  duplicate key value violates unique constraint "contracts_pkey"
+DETAIL:  Key (id)=(6818f0f901622ec26ede8e37745c60df31aeeb0d) already exists.

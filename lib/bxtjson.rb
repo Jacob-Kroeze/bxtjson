@@ -86,20 +86,27 @@ module Bxtjson
 
       text_to_lazy_json(json_filename: json_filename, clean_proc: clean_proc )
         .map {|data| 
-        data = fillin(source_hash: _map_onto_skeleton_of_schema( data, 
-                                                                 skeleton: skeleton ),
+        data = fillin(source_hash: _map_onto_skeleton_of_schema( data) , 
                       skeleton: skeleton) 
         result = model.create( data_attr => data)
       }
     else
       out = []
       text_to_lazy_json(json_filename: json_filename, clean_proc: clean_proc )
-        .map {|data| out << fillin(source_hash: _map_onto_skeleton_of_schema( data, 
-                                                                              skeleton: skeleton ),
+        .map {|data| out << fillin(source_hash: _map_onto_skeleton_of_schema( data),
                                    skeleton: skeleton)
       }
     end
   end
+  # Muscle fillin with just one json object
+  def self.muscle_one(line, skeleton, clean_proc:)
+        Bxtjson.fillin( source_hash: Bxtjson._map_onto_skeleton_of_schema(
+                                                              Bxtjson._key_cleaner(data: MultiJson.load(line), 
+                                                                                   clean_proc: clean_proc)
+                                                                          ),
+                        skeleton: skeleton)
+  end
+
   # Recursively remove falsey values from hash
   # Falsey values are those that return true from respond_to(:empty?)
   # or :nil?
@@ -240,22 +247,20 @@ module Bxtjson
   # of "keys/key" or "unique/uniqueNest"
   # Hash -> Hash
   def self._map_onto_skeleton_of_schema(json_data,
-                                        acc: {},
-                                        skeleton:)
-
+                                        acc: {} )
     case 
     when json_data.kind_of?(Hash)
       acc = Hash[json_data.map do |key, value|
                    [key,
                     _map_onto_skeleton_of_schema(value,
-                                                 acc: acc,
-                                                 skeleton: skeleton)
+                                                 acc: acc)
+
                    ]
                  end
                 ]
     when json_data.kind_of?(Array)
       acc =  json_data.map do |item|
-        _map_onto_skeleton_of_schema(item, skeleton: skeleton)
+        _map_onto_skeleton_of_schema(item)
       end
     else
       acc = json_data
