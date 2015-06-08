@@ -1,6 +1,7 @@
 Gem::Specification.new do |s|
   s.name = 'bxtjson'
   s.version = '0.0.1'
+  s.add_runtime_dependency "yajl-ruby", "~>1.2.1", ">= 1.2.0"
   s.add_runtime_dependency "multi_json", "~> 1.10", ">= 1.10.0"
   s.add_runtime_dependency "json_schema", "~>0.5", ">=0.5.0"
   s.date = '2015-03-26'

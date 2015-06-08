@@ -1,0 +1,6 @@
+An unhandled error condition has been signalled:
+   There is no applicable method for the generic function
+     #<STANDARD-GENERIC-FUNCTION PGLOADER.CONNECTION:CONN-TYPE (1)>
+   when called with arguments
+     (NIL).
+

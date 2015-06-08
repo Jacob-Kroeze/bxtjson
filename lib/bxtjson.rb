@@ -2,6 +2,7 @@
 # main method map_onto_skeleton_of_schema
 # JSON -> JSON
 
+require 'yajl'
 require 'multi_json'
 require 'json_schema'
   # == dependencies
@@ -115,9 +116,38 @@ module Bxtjson
   def self.compact_hash!(hash)
     p = proc do |_, v|
       v.delete_if(&p) if v.respond_to? :delete_if
+      v.respond_to?(:empty?) && v.empty? || v.nil? ||
+        v.respond_to?(:any?) && v.first.empty?
+    end
+    hash.delete_if(&p)
+  end
+  def self.compact_hash_greedy!(hash)
+    p = proc do |_, v|
+      if v.respond_to?(:delete_if)
+        v.delete_if(&p)
+      end
       v.respond_to?(:empty?) && v.empty? || v.nil?
     end
     hash.delete_if(&p)
+  end
+  # Given or array, remove any nil or empty values. If it's a hash,
+  # remove key as well.
+  # @param [Hash] h
+  # @return [hash]
+
+  def self.compact_hash_greedy(h)
+    #select with prepend "!" may be faster.
+    h.map{|k,v|
+      case v
+      when Hash
+        [k, compact_hash_greedy(v)] if clean_nil_or_empty(v)
+      when Array
+        [k, v.map{|item| compact_hash_greedy(item) if clean_nil_or_empty(item)
+         }.compact.reject(&:empty?)] if clean_nil_or_empty(v)
+      else
+        [k,v] if clean_nil_or_empty(v)
+      end
+    }.compact.reject(&:empty?).to_h
   end
   def self.compact_values!(hash)
     Hash[hash.map do |key, value|
@@ -134,6 +164,14 @@ module Bxtjson
         ]
   end
   private
+  def self.clean_nil_or_empty(e)
+    if e.nil? || e.respond_to?(:empty) && e.empty?
+      nil
+    else
+      e
+    end
+  end
+
   # Creates a skeleton for object and array from a Json Schema
   # Boolean, String, Number, Integer, Null are given a nil value to start.
   # Hash -> Hash

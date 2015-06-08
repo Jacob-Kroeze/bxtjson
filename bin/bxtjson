@@ -20,23 +20,28 @@ option_parser = OptionParser.new do |opt|
   opt.on("-e", "--entity ENTITY", "JSON Schema entity (top level properties)") do |entity|
     options[:entity] = entity
   end
-  opt.on("-pp", "--pretty BOOLEAN", "Pretty print json output as array. -pp defaults to true") do |pretty|
+  opt.on("-p", "--pretty BOOLEAN", "Pretty print json output as array. -pp defaults to true") do |pretty|
     options[:pretty] = pretty ||= true
   end
-  opt.on("-aa", "--array BOOLEAN", "FIXME not implemented. Make output a json array format, prepend [ add "," and append ]") do |array|
+  opt.on("-a", "--array BOOLEAN", "FIXME not implemented. Make output a json array format, prepend [ add "," and append ]") do |array|
     options[:array] = array ||=true
   end
-  opt.on("-cc", "--compact BOOLEAN", "Remove keys and values, except top level keys, of all falsey/empty values") do |compact|
-    options[:compact] = compact ||= true
+  opt.on("-c", "--[no-]compact", "Remove keys and values, except top level keys, of all falsey/empty values") do |compact|
+    options[:compact] = compact
   end
-  opt.on("-h", "--help", "help") do
+  opt.on("-C", "--[no-]compact-greedy", "Remove keys and values if values are falsey/empty") do |compactgreedy|
+    options[:compactgreedy] = compactgreedy
+  end
+  opt.on_tail("-h", "--help", "help") do
     puts option_parser
+    exit
   end
 end
 
 option_parser.parse!
 skeleton = Bxtjson.skeleton(schema_data: JSON.parse(File.read options[:schema]),
                             entity: options[:entity])
+# generously keep parent key even if beneath it is all empty or nil values
 def self.compact_values!(hash)
   Hash[ Bxtjson.compact_values!(hash).map do |key, value|
           [key, 
@@ -54,6 +59,9 @@ ARGF.each_line do |line|
   result = Bxtjson.muscle_one(line, skeleton, clean_proc: clean_proc)
   if options[:compact]
     compact_values!(result)
+  end
+  if options[:compactgreedy]
+    result = Bxtjson.compact_hash_greedy(result)
   end
 #     Bxtjson.fillin( source_hash: Bxtjson._map_onto_skeleton_of_schema(
 #                                                               Bxtjson._key_cleaner(data: MultiJson.load(line), 
