@@ -20,7 +20,7 @@ option_parser = OptionParser.new do |opt|
   opt.on("-e", "--entity ENTITY", "JSON Schema entity (top level properties)") do |entity|
     options[:entity] = entity
   end
-  opt.on("-p", "--pretty BOOLEAN", "Pretty print json output as array. -pp defaults to true") do |pretty|
+  opt.on("-p", "--[no-]pretty", "Pretty print json output as array") do |pretty|
     options[:pretty] = pretty ||= true
   end
   opt.on("-a", "--array BOOLEAN", "FIXME not implemented. Make output a json array format, prepend [ add "," and append ]") do |array|
@@ -63,12 +63,6 @@ ARGF.each_line do |line|
   if options[:compactgreedy]
     result = Bxtjson.compact_hash_greedy(result)
   end
-#     Bxtjson.fillin( source_hash: Bxtjson._map_onto_skeleton_of_schema(
-#                                                               Bxtjson._key_cleaner(data: MultiJson.load(line), 
-#                                                                                    clean_proc: clean_proc)#,
-# #p                                                              skeleton: skeleton
-#                                                               ),
-#             skeleton: skeleton)
   if options[:pretty]
     STDOUT.write("[") if ARGF.file.lineno == 1
     STDOUT.write(MultiJson.dump result, pretty: true)

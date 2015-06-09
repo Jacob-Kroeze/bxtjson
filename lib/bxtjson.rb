@@ -140,15 +140,19 @@ module Bxtjson
     h.map{|k,v|
       case v
       when Hash
-        [k, compact_hash_greedy(v)] if clean_nil_or_empty(v)
+        [k, compact_hash_greedy(v)] if some(v)
       when Array
-        [k, v.map{|item| compact_hash_greedy(item) if clean_nil_or_empty(item)
-         }.compact.reject(&:empty?)] if clean_nil_or_empty(v)
+        if some(v)
+          [k, v.map{
+             |item| compact_hash_greedy(item) if some(item)
+           }.compact.reject(&:empty?)]
+        end
       else
-        [k,v] if clean_nil_or_empty(v)
+        [k,v] if some(v)
       end
-    }.compact.reject(&:empty?).to_h
+    }.compact.reject(&:empty?).to_h.select{|k,v| some(v)}
   end
+  # FIXME: bash on the struct.
   def self.compact_values!(hash)
     Hash[hash.map do |key, value|
            [key,
@@ -164,8 +168,10 @@ module Bxtjson
         ]
   end
   private
-  def self.clean_nil_or_empty(e)
-    if e.nil? || e.respond_to?(:empty) && e.empty?
+  def self.some(e)
+    if e.nil? || e.respond_to?(:empty?) && e.empty? 
+      nil
+    elsif e.respond_to?(:any?) && e.any? && e.map(&:any?).none?
       nil
     else
       e
