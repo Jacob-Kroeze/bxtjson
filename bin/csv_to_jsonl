@@ -1,0 +1,19 @@
+#!/usr/bin/env ruby
+require 'csv'
+require 'yajl'
+require 'multi_json'
+
+#  puts 'Usage: csv_to_jsonl input_file.csv output_file.jsonl'
+#  puts 'This script uses the first line of the csv file as the keys for the JSONL properties of the objects. JSONL is JSON compacted to one line per object. A linefeed style for stream processing.'
+#  exit(1)
+
+
+file = ARGF
+header = file.gets
+file.each_line do |line|
+  values = line.parse_csv
+  keys = header.parse_csv
+  data = Hash[keys.zip(values)]
+  STDOUT.puts(MultiJson.dump data) 
+end
+
